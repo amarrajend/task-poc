@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-service
+  labels:
+    app: task-service
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: task-service
+  template:
+    metadata:
+      labels:
+        app: task-service
+    spec:
+      containers:
+        - name: task-service
+          image: amarrajend/task-service:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATA_MONGODB_URI
+              value: "mongodb://mongodb-service:27017/taskdb"
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-service
+spec:
+  type: NodePort
+  selector:
+    app: task-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
