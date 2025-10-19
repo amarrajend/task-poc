@@ -5,14 +5,18 @@ package com.kaiburr.poc.service;
 import com.kaiburr.poc.model.Task;
 import com.kaiburr.poc.model.TaskExecution;
 import com.kaiburr.poc.repo.TaskRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -20,6 +24,37 @@ public class TaskService {
 
     private final TaskRepository repo;
     private final CommandValidator validator;
+
+    @Autowired
+    private KubernetesService kubernetesService;
+
+    @Value("${KUBERNETES_NAMESPACE:default}")
+    private String namespace;
+
+    public TaskExecution addTaskExecution(String taskId, String command) {
+        System.out.println("Adding TaskExecution for Task ID: " + taskId + " with command: " + command);
+        Optional<Task> optionalTask = repo.findById(taskId);
+        if (optionalTask.isPresent()) {
+            Task task = optionalTask.get();
+
+            // Create Kubernetes pod to execute command
+            String executionResult = kubernetesService.createCommandPod(command, namespace);
+            Date start = Date.from(Instant.now());
+            Date end = Date.from(Instant.now());
+
+
+            TaskExecution execution = new TaskExecution();
+            execution.setStartTime(start);
+            execution.setEndTime(end); // Simulate end time
+            execution.setOutput(executionResult);
+
+            task.getTaskExecutions().add(execution);
+            repo.save(task);
+
+            return execution;
+        }
+        throw new RuntimeException("Task not found with id: " + taskId);
+    }
 
     public TaskService(TaskRepository repo, CommandValidator validator) {
         this.repo = repo;

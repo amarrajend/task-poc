@@ -7,6 +7,7 @@ import com.kaiburr.poc.model.TaskExecution;
 import com.kaiburr.poc.service.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class TaskController {
 
     @GetMapping("/Test")
     public String get() {
+        System.out.println("Health check endpoint called.");
         return "Task Service is up and running!";
     }
 
@@ -61,5 +63,26 @@ public class TaskController {
     @ResponseStatus(HttpStatus.OK)
     public TaskExecution execute(@PathVariable String id) throws Exception {
         return service.run(id);
+    }
+
+    @PostMapping("/{id}/executions")
+    public ResponseEntity<TaskExecution> addTaskExecution(
+            @PathVariable String id,
+            @RequestBody CommandRequest commandRequest) {
+        System.out.println("Received request to add TaskExecution for Task ID: " + id + " with command: " + commandRequest.getCommand());
+        TaskExecution execution = service.addTaskExecution(id, commandRequest.getCommand());
+        return ResponseEntity.ok(execution);
+    }
+
+    public static class CommandRequest {
+        private String command;
+
+        public String getCommand() {
+            return command;
+        }
+
+        public void setCommand(String command) {
+            this.command = command;
+        }
     }
 }

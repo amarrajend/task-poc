@@ -14,6 +14,7 @@ spec:
       labels:
         app: task-service
     spec:
+      serviceAccountName: task-service-account
       containers:
         - name: task-service
           image: amarrajend/task-service:latest
