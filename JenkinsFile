@@ -1,35 +1,40 @@
 pipeline {
     agent any
-    environment{
-        DOCKERHUB_CREDS = credentials('dockerhub')
-        PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
+    environment {
+        DOCKER_IMAGE = "amarrajend/task-service"
+        DOCKER_TAG = "${env.BUILD_NUMBER}"
     }
     stages {
-        stage('Clone Repo') {
+        stage('Build') {
             steps {
-                // Use git command instead of checkout scm
                 sh '''
-                    git clone https://github.com/amarrajend/task-poc.git .
-                    ls -la
+                    echo "Building application..."
+                    mvn clean package -DskipTests
                 '''
             }
         }
-        stage('Build Image') {
+        stage('Docker Build') {
             steps {
-                sh 'echo "Username is: $DOCKERHUB_CREDS_USR"'
-                sh 'echo "Password is: $DOCKERHUB_CREDS_PSW"'
-                sh 'echo "Build Number is: $BUILD_NUMBER"'
-                sh 'docker build -t amarrajend/task-service:$BUILD_NUMBER .'
-            }
-        }
-        stage('Docker Login') {
-            steps {
-                sh 'echo $DOCKERHUB_CREDS_PSW | docker login -u $DOCKERHUB_CREDS_USR --password-stdin'
+                sh '''
+                    echo "Building Docker image..."
+                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                '''
             }
         }
         stage('Docker Push') {
             steps {
-                sh 'docker push amarrajend/task-service:$BUILD_NUMBER'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    sh '''
+                        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                        docker push ${DOCKER_IMAGE}:latest
+                    '''
+                }
             }
         }
     }
