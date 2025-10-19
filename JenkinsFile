@@ -1,0 +1,41 @@
+pipeline {
+    agent any
+    environment{
+        DOCKERHUB_CREDS = credentials('dockerhub')
+        PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
+    }
+    stages {
+        stage('Clone Repo') {
+            steps {
+                // Use git command instead of checkout scm
+                sh '''
+                    git clone https://github.com/amarrajend/task-poc.git .
+                    ls -la
+                '''
+            }
+        }
+        stage('Build Image') {
+            steps {
+                sh 'echo "Username is: $DOCKERHUB_CREDS_USR"'
+                sh 'echo "Password is: $DOCKERHUB_CREDS_PSW"'
+                sh 'echo "Build Number is: $BUILD_NUMBER"'
+                sh 'docker build -t amarrajend/task-service:$BUILD_NUMBER .'
+            }
+        }
+        stage('Docker Login') {
+            steps {
+                sh 'echo $DOCKERHUB_CREDS_PSW | docker login -u $DOCKERHUB_CREDS_USR --password-stdin'
+            }
+        }
+        stage('Docker Push') {
+            steps {
+                sh 'docker push amarrajend/task-service:$BUILD_NUMBER'
+            }
+        }
+    }
+    post {
+        always {
+            sh 'docker logout'
+        }
+    }
+}
